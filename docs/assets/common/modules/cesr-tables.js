@@ -1,6 +1,6 @@
 /**
  * Fetch json
- * @param {string} uri 
+ * @param {string} uri
  * @returns {object}
  */
 async function get_json(uri) {
@@ -11,8 +11,9 @@ async function get_json(uri) {
 }
 
 /**
+ * Load count table, field
  * Transform regex patterns in default_sizes.json
- * @param {Promise} default_sizes_promise 
+ * @param {Promise} default_sizes_promise
  * @returns {object}
  */
 async function transform_patterns(default_sizes_promise) {
@@ -32,7 +33,7 @@ async function transform_patterns(default_sizes_promise) {
 
 /**
  * Transform single regex pattern
- * @param {string} pattern 
+ * @param {string} pattern
  * @returns {string}
  */
 function transform_pattern(pattern) {
@@ -44,7 +45,7 @@ function transform_pattern(pattern) {
 
 /**
  * Combine patterns to single pattern with named groups
- * @param {object} default_sizes 
+ * @param {object} default_sizes
  * @returns {string}
  */
 function hard_pattern(default_sizes) {
@@ -58,6 +59,9 @@ function hard_pattern(default_sizes) {
     return `^(${t.join("|")})`;
 }
 
+/**
+ * The set of CESR code tables as read from JSON schema files for material codes, count codes, and index codes
+ */
 export class CesrTables {
     /** codex.json */
     codex;
@@ -84,7 +88,7 @@ export class CesrTables {
     }
     /**
      * Create context by selecting named entries (Matter, Counter, Indexer, etc)
-     * @param  {...string} names 
+     * @param  {...string} names
      * @returns {CesrContext}
      */
     context(...names) {
@@ -93,7 +97,7 @@ export class CesrTables {
 }
 
 /**
- * Context is subset of CesrTables
+ * Context is subset of CesrTables that contains either Matter, Indexer, or Counter codes or a combination of these.
  */
 export class CesrContext {
     /** codex.json */
@@ -108,8 +112,8 @@ export class CesrContext {
     hard_pattern;
     /**
      * Create context by selecting named entries (Matter, Counter, Indexer, etc)
-     * @param {KeriTables} tables 
-     * @param  {...string} names 
+     * @param {KeriTables} tables
+     * @param  {...string} names
      * @returns {CesrContext}
      */
     static create(tables, ...names) {
@@ -141,7 +145,7 @@ export class CesrContext {
     }
     /**
      * Lookup code spec.
-     * @param {string} code 
+     * @param {string} code
      * @returns {object}
      */
     lookup(code) {
@@ -157,7 +161,7 @@ export class CesrContext {
     }
     /**
      * Match code to hard_pattern. Lookup matching entry from default_sizes.json
-     * @param {string} code 
+     * @param {string} code
      * @returns {object | null}
      */
     lookup_table(code) {
@@ -178,8 +182,8 @@ export class CesrContext {
     }
     /**
      * Match code hard part. Lookup matching entry from codex.json
-     * @param {string} code 
-     * @param {object} table 
+     * @param {string} code
+     * @param {object} table
      * @returns {object | null}
      */
     lookup_name(code, table) {
@@ -193,8 +197,8 @@ export class CesrContext {
     }
     /**
      * Match code hard part. Lookup matching entry from sizes.json
-     * @param {string} code 
-     * @param {object} table 
+     * @param {string} code
+     * @param {object} table
      * @returns {object | null}
      */
     lookup_sizes(code, table) {
@@ -208,8 +212,8 @@ export class CesrContext {
     }
     /**
      * Match code hard part. Lookup matching entry from counter.json
-     * @param {string} code 
-     * @param {object} table 
+     * @param {string} code
+     * @param {object} table
      * @returns {object | null}
      */
     lookup_counter(code, table) {

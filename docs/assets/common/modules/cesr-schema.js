@@ -1,11 +1,11 @@
-import { CesrProtocol, CesrCodeTable, UnknownCodeError, CesrCodeHeader } from "./cesr.js";
+import {CesrProtocol, CesrCodeTable, UnknownCodeError, CesrVersionHeader, CesrDerivationCode} from "./cesr.js";
 import { Base64 } from "../../local/modules/base64.js";
 
 import { CesrTables, CesrContext } from "./cesr-tables.js";
 
 export class CesrSchemaProtocol extends CesrProtocol {
     /**
-     * @param  {...string} names 
+     * @param  {...string} names
      * @returns {CesrSchemaProtocol}
      */
     static async load(...names) {
@@ -17,8 +17,8 @@ export class CesrSchemaProtocol extends CesrProtocol {
     /** @type {CesrContext} */
     context;
     /**
-     * @param {CesrTables} tables 
-     * @param {...string} names 
+     * @param {CesrTables} tables
+     * @param {...string} names
      */
     constructor(tables, ...names) {
         super();
@@ -27,15 +27,16 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {string} selector 
+     * @param {string} selector
      * @returns {number}
      */
     getSelectorSize(selector) {
-        return 8;
+        return 8; // hardcoded to 8 because count codes are always 8 bytes long or shorter.
     }
-    /** 
+    /**
+     * Look up an entry in the code table based on a derivation code
      * @override
-     * @param {string} selector  
+     * @param {string} selector - derivation code
      * @returns {CesrCodeTable}
      */
     getCodeTable(selector) {
@@ -45,7 +46,7 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code  
+     * @param {CesrVersionHeader} code
      * @returns {string}
      */
     getTypeName(code) {
@@ -53,7 +54,7 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     isFrame(code) {
@@ -61,7 +62,7 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     isGroup(code) {
@@ -69,7 +70,7 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     hasContext(code) {
@@ -77,7 +78,7 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {CesrProtocol}
      */
     getContext(code) {
@@ -92,8 +93,8 @@ export class CesrSchemaCodeTable extends CesrCodeTable {
     /** @type {object} */
     spec;
     /**
-     * @param {CesrSchemaProtocol} protocol 
-     * @param {object} spec 
+     * @param {CesrSchemaProtocol} protocol
+     * @param {object} spec
      */
     constructor(protocol, spec) {
         super(protocol, spec);
@@ -111,8 +112,8 @@ export class CesrSchemaCodeTable extends CesrCodeTable {
     get codeSize() { return this.spec.default_size.hs + (this.spec.default_size.ss ?? 0); }
     /**
      * @override
-     * @param {string} code  
-     * @returns {CesrCodeHeader}
+     * @param {string} code
+     * @returns {CesrDerivationCode}
      */
     mapCodeHeader(code) {
         // value, selector, type, digits, typeName, leadBytes, size, count, quadlets, version, index, ondex
@@ -170,11 +171,25 @@ export class CesrSchemaCodeTable extends CesrCodeTable {
                 header["index"] = Base64.toInt(header.digits);
             }
         }
-        return new CesrCodeHeader(header);
+        return new CesrDerivationCode({
+            table: this,
+            value: header.value,
+            selector: header.selector,
+            type: header.type,
+            digits: header.digits,
+            typeName: header.typeName,
+            leadBytes: header.leadBytes,
+            size: header.size,
+            count: header.count,
+            quadlets: header.quadlets,
+            version: header.version,
+            index: header.index,
+            ondex: header.ondex
+        });
     }
     /**
      * @override
-     * @param {CesrCodeHeader} code  
+     * @param {CesrDerivationCode} code
      * @returns {number}
      */
     getTotalLength(code) {
@@ -197,4 +212,4 @@ export class CesrSchemaCodeTable extends CesrCodeTable {
 }
 
 export { CesrTables, CesrContext };
-export { CesrCodeHeader, CesrValue, getCesrValue, getCesrFrame } from "./cesr.js";
+export { CesrVersionHeader, CesrValue, getCesrValue, getCesrFrame } from "./cesr.js";

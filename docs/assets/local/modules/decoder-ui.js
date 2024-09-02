@@ -17,7 +17,7 @@ function fromJson(json) {
 function formatHeader(code) {
     const parts = [];
     parts.push(code.header.value);
-    parts.push(code.header.typeName ?? code.header.selector);
+    parts.push(code.header.typeName ?? code.header.serial);
     for (const i of ["leadBytes", "size", "count", "version", "index", "ondex"]) {
         if (Object.hasOwn(code.header, i)) {
             parts.push(`${i}=${code.header[i]}`);
@@ -29,9 +29,9 @@ function formatHeader(code) {
 function formatJsonHeader(code, json) {
     const parts = [];
     parts.push(code.header.value);
-    parts.push(code.header.type);
+    parts.push(code.header.proto);
     parts.push(`size=${code.header.size}`);
-    switch (code.header.type) {
+    switch (code.header.proto) {
         case "KERI10":
             for (const i of ["t", "i", "r"]) {
                 if (Object.hasOwn(json, i)) {
@@ -50,28 +50,29 @@ function formatJsonHeader(code, json) {
     return parts.join(" ");
 }
 
+
 export class DecoderUi extends CesrDecoder {
     /**
-     * @param {CesrProtocol} protocol 
+     * @param {CesrProtocol} protocol
      */
     constructor(protocol) {
         super(protocol);
     }
-    mapDefault(frame, group, code, offset, header) {
+    mapDefault(frame, group, cesrValue, offset, header) {
         const parent = (group?.value ?? frame.value);
         const details = document.createElement("details");
         details.setAttribute("data-start", offset.start);
         details.setAttribute("data-end", offset.start + offset.length);
         const summary = document.createElement("summary");
-        header ??= formatHeader(code);
+        header ??= formatHeader(cesrValue);
         summary.innerText = header;
         details.appendChild(summary);
         parent.appendChild(details);
         return details;
     }
-    mapJsonFrame(frame, group, code, offset) {
-        const json = fromJson(Utf8.decode(code.value));
-        const details = this.mapDefault(frame, group, code, offset, formatJsonHeader(code, json));
+    mapJsonFrame(frame, group, cesrValue, offset) {
+        const json = fromJson(Utf8.decode(cesrValue.value));
+        const details = this.mapDefault(frame, group, cesrValue, offset, formatJsonHeader(cesrValue, json));
         details.classList.add("frame", "json");
         const section = document.createElement("section");
         section.classList.add("value");
@@ -81,29 +82,29 @@ export class DecoderUi extends CesrDecoder {
         details.appendChild(section);
         return details;
     }
-    mapCesrFrame(frame, group, code, offset) {
-        const details = this.mapDefault(frame, group, code, offset);
+    mapCesrFrame(frame, group, cesrValue, offset) {
+        const details = this.mapDefault(frame, group, cesrValue, offset);
         details.classList.add("frame", "cesr");
         const section = document.createElement("section");
         section.classList.add("value");
         details.appendChild(section);
         return section;
     }
-    mapCesrGroup(frame, group, code, offset) {
-        const details = this.mapDefault(frame, group, code, offset);
+    mapCesrGroup(frame, group, cesrValue, offset) {
+        const details = this.mapDefault(frame, group, cesrValue, offset);
         details.classList.add("group");
         const section = document.createElement("section");
         section.classList.add("value");
         details.appendChild(section);
         return section;
     }
-    mapCesrLeaf(frame, group, code, offset) {
-        const details = this.mapDefault(frame, group, code, offset);
+    mapCesrLeaf(frame, group, cesrValue, offset) {
+        const details = this.mapDefault(frame, group, cesrValue, offset);
         details.classList.add("leaf");
         const section = document.createElement("section");
         section.classList.add("value");
         const value = document.createElement("code");
-        value.innerText = Utf8.decode(code.value);
+        value.innerText = Utf8.decode(cesrValue.value);
         section.appendChild(value);
         details.appendChild(section);
         return section;
