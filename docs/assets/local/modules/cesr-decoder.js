@@ -1,5 +1,8 @@
-import { getCesrValue, getCesrFrame, CesrProtocol, CesrValue } from "../../common/modules/cesr.js";
+import {getCesrValue, getCesrFrame, CesrProtocol, CesrValue, Serials} from "../../common/modules/cesr.js";
 
+/**
+ * A grouped primitive
+ */
 class Group {
     /** @type {Group} */
     next;
@@ -17,14 +20,18 @@ class Group {
     }
 }
 
+/**
+ * A {Frame} is a self-framing value from a CESR stream including a reference to the next {Frame}
+ * in a sequence of Frames.
+ */
 class Frame {
     /** @type {Frame} */
     next;
     /** @type {number} */
     end;
-    /** 
+    /**
      * Either {@link getCesrValue} or {@link getCesrFrame}
-     * @type {getCesrValue | getCesrFrame} 
+     * @type {getCesrValue | getCesrFrame}
      * */
     valueGetter;
     /** @type {Group} */
@@ -55,7 +62,7 @@ export class DecoderState {
     /** @type {boolean} */
     get isEmpty() { return this.currentFrame.next === null; }
     /**
-     * @param {object} value 
+     * @param {object} value
      */
     constructor(value) {
         this.currentFrame = new Frame({
@@ -69,7 +76,7 @@ export class DecoderState {
     }
     /**
      * @param {number} end
-     * @param {object} value 
+     * @param {object} value
      */
     pushFrame(end, value) {
         this.currentFrame = new Frame({
@@ -85,9 +92,9 @@ export class DecoderState {
         this.currentFrame = this.currentFrame.next;
     }
     /**
-     * @param {number} count 
-     * @param {CesrProtocol} protocol 
-     * @param {object} value 
+     * @param {number} count
+     * @param {CesrProtocol} protocol
+     * @param {object} value
      */
     pushGroup(count, protocol, value) {
         for (let i = 0; i < count; i++) {
@@ -109,19 +116,22 @@ export class DecoderState {
 }
 
 export class CesrDecoder {
-    /** @type {CesrProtocol} */
+    /**
+     * The code tables read in from Disk
+     * @type {CesrProtocol}
+     */
     #protocol;
     /**
-     * @param {CesrProtocol} protocol 
+     * @param {CesrProtocol} protocol
      */
     constructor(protocol) {
         if (protocol === null || protocol === undefined) throw new TypeError(`CesrDecoder(protocol): invalid argument`);
         this.#protocol = protocol;
     }
     /**
-     * @param {Frame} frame 
-     * @param {Group} group 
-     * @param {CesrValue} code 
+     * @param {Frame} frame
+     * @param {Group} group
+     * @param {CesrValue} code
      * @returns {object}
      */
     mapDefault(frame, group, code, offset) { return code; }
@@ -129,7 +139,11 @@ export class CesrDecoder {
     mapCesrFrame(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
     mapCesrGroup(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
     mapCesrLeaf(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
+
     /**
+     * Returns the next slice of bytes based on the count of bytes between the start and end state.
+     * A cold start returns the entire stream of bytes. Each iteration of the {CesrDecoder.values()}
+     * generator updates the start and end based on the size of the primitive encountered.
      * @param {DecoderState} state
      * @param {Uint8Array} input
      */
@@ -142,8 +156,9 @@ export class CesrDecoder {
         }
     }
     /**
-     * @param {DecoderState} state
-     * @param {Uint8Array} input
+     * Generator function that yields each encountered self-framing value in a CESR stream.
+     * @param {DecoderState} state - The state of the parser window on the `input` stream bytes.
+     * @param {Uint8Array} input - The CESR stream
      */
     *values(state, input) {
         while (true) {
@@ -153,29 +168,35 @@ export class CesrDecoder {
             const group = state.popGroup();
             const protocol = group?.protocol ?? this.#protocol;
             const getValue = frame.valueGetter;
-            const code = getValue(protocol, slice);
-            let length = code.length;
+            const frameValue = getValue(protocol, slice);
+            let length = frameValue.length;
             let result = undefined;
-            switch (code.header.selector) {
-                case "JSON":
-                    result = this.mapJsonFrame(frame, group, code, { start: state.start, length: length });
-                    break;
-                default:
-                    if (protocol.isFrame(code.header)) {
-                        length = code.header.length;
-                        result = this.mapCesrFrame(frame, group, code, { start: state.start, length: length });
-                        state.pushFrame(state.start + code.length, result);
-                    } else if (protocol.isGroup(code.header)) {
-                        result = this.mapCesrGroup(frame, group, code, { start: state.start, length: length });
-                        const p = protocol.hasContext(code.header) ? protocol.getContext(code.header) : null;
-                        state.pushGroup(code.header.count, p, result);
-                    } else {
-                        result = this.mapCesrLeaf(frame, group, code, { start: state.start, length: length });
-                    }
-                    break;
+
+            if(frameValue.header.serial) {
+                switch (frameValue.header.serial) {
+                    case Serials.json:
+                        result = this.mapJsonFrame(frame, group, frameValue, {start: state.start, length: length});
+                        break;
+                    default:
+                        throw new Error(`Unsupported serialization type: ${frameValue.header.serial}`)
+                }
+            } else if (frameValue.header.selector) {
+                if (protocol.isFrame(frameValue.header)) {
+                    length = frameValue.header.length;
+                    result = this.mapCesrFrame(frame, group, frameValue, { start: state.start, length: length });
+                    state.pushFrame(state.start + frameValue.length, result);
+                } else if (protocol.isGroup(frameValue.header)) {
+                    result = this.mapCesrGroup(frame, group, frameValue, { start: state.start, length: length });
+                    const p = protocol.hasContext(frameValue.header) ? protocol.getContext(frameValue.header) : null;
+                    state.pushGroup(frameValue.header.count, p, result);
+                } else {
+                    result = this.mapCesrLeaf(frame, group, frameValue, { start: state.start, length: length });
+                }
+            } else {
+                throw new Error(`Unsupported header type: ${JSON.stringify(frameValue.header)}`)
             }
             yield result;
-            state.start += length;
+            state.start += length; // move the frame forward
         }
     }
 }

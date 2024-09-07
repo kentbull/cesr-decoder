@@ -1,4 +1,14 @@
 {
+  "Cold": {
+    "0": "Free",
+    "1": "CtB64",
+    "2": "OpB64",
+    "3": "JSON",
+    "4": "MGPK1",
+    "5": "CBOR",
+    "6": "MGPK2",
+    "7": "CtOpB2"
+  },
   "Matter": {
     "A": "Ed25519_Seed",
     "B": "Ed25519N",
@@ -43,13 +53,14 @@
     "1AAC": "Ed448N",
     "1AAD": "Ed448",
     "1AAE": "Ed448_Sig",
-    "1AAF": "Tern",
+    "1AAF": "Tag4",
     "1AAG": "DateTime",
     "1AAH": "X25519_Cipher_Salt",
     "1AAI": "ECDSA_256r1N",
     "1AAJ": "ECDSA_256r1",
     "1AAK": "Null",
-    "1AAL": "Tag4",
+    "1AAL": "Yes",
+    "1AAM": "No",
     "2AAA": "TBD1",
     "3AAA": "TBD2",
     "4A": "StrB64_L0",
@@ -69,7 +80,13 @@
     "6C": "X25519_Cipher_L2",
     "7AAC": "X25519_Cipher_Big_L0",
     "8AAC": "X25519_Cipher_Big_L1",
-    "9AAC": "X25519_Cipher_Big_L2"
+    "9AAC": "X25519_Cipher_Big_L2",
+    "4D": "X25519_Cipher_QB64_L0",
+    "5D": "X25519_Cipher_QB64_L1",
+    "6D": "X25519_Cipher_QB64_L2",
+    "7AAD": "X25519_Cipher_QB64_Big_L0",
+    "8AAD": "X25519_Cipher_QB64_Big_L1",
+    "9AAD": "X25519_Cipher_QB64_Big_L2"
   },
   "SmallVarRawSize": {
     "4": "Lead0",
@@ -111,6 +128,52 @@
     "7AAA": "StrB64_Big_L0",
     "8AAA": "StrB64_Big_L1",
     "9AAA": "StrB64_Big_L2"
+  },
+  "Text": {
+    "4B": "Bytes_L0",
+    "5B": "Bytes_L1",
+    "6B": "Bytes_L2",
+    "7AAB": "Bytes_Big_L0",
+    "8AAB": "Bytes_Big_L1",
+    "9AAB": "Bytes_Big_L2"
+  },
+  "CipherX25519Var": {
+    "4D": "X25519_Cipher_L0",
+    "5D": "X25519_Cipher_L1",
+    "6D": "X25519_Cipher_L2",
+    "7AAD": "X25519_Cipher_Big_L0",
+    "8AAD": "X25519_Cipher_Big_L1",
+    "9AAD": "X25519_Cipher_Big_L2"
+  },
+  "CipherX25519FixQB64": {
+    "P": "X25519_Cipher_Seed",
+    "1AAH": "X25519_Cipher_Salt"
+  },
+  "CipherX25519VarQB64": {
+    "4D": "X25519_Cipher_QB64_L0",
+    "5E": "X25519_Cipher_QB64_L1",
+    "6E": "X25519_Cipher_QB64_L2",
+    "7AAD": "X25519_Cipher_QB64_Big_L0",
+    "8AAD": "X25519_Cipher_QB64_Big_L1",
+    "9AAD": "X25519_Cipher_QB64_Big_L2"
+  },
+  "CipherX25519AllQB64": {
+    "P": "X25519_Cipher_Seed",
+    "1AAH": "X25519_Cipher_Salt",
+    "4D": "X25519_Cipher_QB64_L0",
+    "5E": "X25519_Cipher_QB64_L1",
+    "6E": "X25519_Cipher_QB64_L2",
+    "7AAD": "X25519_Cipher_QB64_Big_L0",
+    "8AAD": "X25519_Cipher_QB64_Big_L1",
+    "9AAD": "X25519_Cipher_QB64_Big_L2"
+  },
+  "CipherX25519QB2Var": {
+    "4E": "X25519_Cipher_L0",
+    "5E": "X25519_Cipher_L1",
+    "6E": "X25519_Cipher_L2",
+    "7AAE": "X25519_Cipher_Big_L0",
+    "8AAE": "X25519_Cipher_Big_L1",
+    "9AAE": "X25519_Cipher_Big_L2"
   },
   "Pre": {
     "B": "Ed25519N",
@@ -233,15 +296,5 @@
     "-0X": "BigCombinedMaterialQuadlets",
     "-0Y": "BigMaterialGroups",
     "-0Z": "BigMaterialQuadlets"
-  },
-  "Cold": {
-    "0": "Free",
-    "1": "CtB64",
-    "2": "OpB64",
-    "3": "JSON",
-    "4": "MGPK1",
-    "5": "CBOR",
-    "6": "MGPK2",
-    "7": "CtOpB2"
   }
 }

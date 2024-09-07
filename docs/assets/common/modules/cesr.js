@@ -11,8 +11,8 @@ https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 export class UnknownCodeError extends Error {
     /** @type {string} */
     code;
-    /** 
-     * @param {string} message 
+    /**
+     * @param {string} message
      * @param {string} code
      */
     constructor(message, code) {
@@ -21,29 +21,51 @@ export class UnknownCodeError extends Error {
     }
 }
 
+export const Serials = Object.freeze({
+    json: 'JSON',
+    mgpk: 'MGPK',
+    cbor: 'CBOR'
+})
+
 /**
- * https://weboftrust.github.io/ietf-cesr/draft-ssmith-cesr.html#section-3.16 
+ * The version string of a CESR primitive encoded in JSON, CBOR, MGPK, etc.
+ * https://weboftrust.github.io/ietf-cesr/draft-ssmith-cesr.html#section-3.16
  */
-export class CesrCodeHeader {
-    /** @type {CesrCodeTable} */
+export class CesrVersionHeader {
+    /**
+     * @type {CesrCodeTable}
+     */
     table;
-    /** @type {string} */
+    /**
+     * The complete CESR Version string
+     * @type {string}
+     */
     value;
-    /** @type {string} */
-    selector;
-    /** @type {string} */
-    type;
-    /** 
+    /**
+     * The serialization type JSON, CBOR, MGPK, etc.
+     * @type {string}
+     */
+    serial;
+    /**
+     * The protocol type whether KERI, ACDC, etc.
+     * @type {string}
+     */
+    proto;
+    /**
      * Length of code header. Same as {@link CesrCodeTable.codeSize}
-     * @type {number} 
+     * @type {number}
      */
     get length() { return this.value.length; }
-    /** @param {object} obj */
+
+    /**
+     * Creates a CesrCodeHeader representing the version string header of a CESR cryptographic primitive.
+     * @param {object} obj
+     */
     constructor(obj) {
         this.table = obj.table;
         this.value = obj.value;
-        this.selector = obj.selector;
-        this.type = obj.type;
+        this.serial = obj.serial;
+        this.proto = obj.proto;
         // define optional property digits
         if (Object.hasOwn(obj, "digits")) this.digits = obj.digits;
         // define optional context specific properties
@@ -64,6 +86,123 @@ export class CesrCodeHeader {
 }
 
 /**
+ * The derivation code of an encoded CESR primitive.
+ * https://weboftrust.github.io/ietf-cesr/draft-ssmith-cesr.html#section-3.16
+ */
+export class CesrDerivationCode {
+    /**
+     * @type {CesrCodeTable}
+     */
+    table;
+    /**
+     * The complete CESR Version string
+     * @type {string}
+     */
+    value;
+    /**
+     * The text selector of a CESR derivation code.
+     * @type {string}
+     */
+    selector;
+    /**
+     * The type of derivation code whether group code, index code, matter code, or otherwise.
+     * @type {string}
+     */
+    type;
+
+    /**
+     * Size of the primitive encoded as Base64URLSafe characters.
+     * @type {string | undefined}
+     */
+    digits;
+
+    /**
+     * The characters of the derivation code indicating its type.
+     * @type {string}
+     */
+    typeName;
+
+    /**
+     * Quantity of lead pad bytes
+     * @type {number | undefined}
+     */
+    leadBytes;
+
+    /**
+     * The integer representation of the Base64 digits field.
+     * @type {number | undefined}
+     */
+    size;
+
+    /**
+     * Count of quadlets in the CESR primitive.
+     * @type {number | undefined}
+     */
+    count;
+    /**
+     * Count of quadlets in the CESR primitive.
+     * @type {number | undefined}
+     */
+    quadlets;
+    /**
+     * Version number string of the CESR primitive.
+     * Remove if not needed.
+     * @type {string | undefined}
+     */
+    version;
+    /**
+     * The index of an indexed CESR primitive.
+     * @type {number | undefined}
+     */
+    index;
+    /**
+     * The other index of an indexed CESR primitive.
+     * @type {number | undefined}
+     */
+    ondex;
+
+    /**
+     * Length of code header. Same as {@link CesrCodeTable.codeSize}
+     * @type {number}
+     */
+    get length() { return this.value.length; }
+
+    /**
+     * Creates a CesrCodeHeader representing the version string header of a CESR cryptographic primitive.
+     * @param {object} obj
+     */
+    constructor({table, value, selector, type, digits, typeName, leadBytes, size, count, quadlets, version, index, ondex}) {
+        this.table = table;
+        this.value = value;
+        this.selector = selector;
+        this.type = type;
+        this.typeName = typeName;
+        this.digits = digits; // define optional property digits
+        this.leadBytes = leadBytes;
+        this.size = size;
+        this.count = count;
+        this.quadlets = quadlets;
+        this.version = version;
+        this.index = index;
+        this.ondex = ondex;
+        // define optional context specific properties
+        for (const key of ["typeName", "leadBytes", "size", "count", "quadlets", "version", "index", "ondex"]) {
+            if (Object.hasOwn(this, key) && this[key] !== undefined) {
+                const descriptor = {
+                    enumerable: true
+                };
+                if (typeof this[key] === "function") {
+                    descriptor["get"] = this[key];
+                } else {
+                    descriptor["value"] = this[key];
+                }
+                Object.defineProperty(this, key, descriptor);
+            }
+        }
+    }
+}
+
+/**
  * Map selector string of 1 or 2 chars to code table {@link CesrCodeTable}
  * Abstract class
  * Implementation {@link CesrSchemaProtocol}
@@ -71,56 +210,56 @@ export class CesrCodeHeader {
 export class CesrProtocol {
     /** @type {string} */
     get name() { return this.constructor.name; }
-    /** 
-     * @param {string} selector  
+    /**
+     * @param {string} selector
      * @returns {number}
      */
     getSelectorSize(selector) {
         return 1;
     }
-    /** 
-     * @param {string} selector  
+    /**
+     * @param {string} selector
      * @returns {CesrCodeTable}
      */
     getCodeTable(selector) {
         throw new UnknownCodeError(`${this.name}.getCodeTable`, selector);
     }
-    /** 
-     * @param {CesrCodeHeader} code  
+    /**
+     * @param {CesrVersionHeader} code
      * @returns {string}
      */
     getTypeName(code) {
         return undefined;
     }
     /**
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     isFrame(code) {
         return false;
     }
     /**
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     isGroup(code) {
         return false;
     }
     /**
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {boolean}
      */
     hasContext(code) {
         return false;
     }
     /**
-     * @param {CesrCodeHeader} code 
+     * @param {CesrVersionHeader} code
      * @returns {CesrProtocol}
      */
     getContext(code) {
         return undefined;
     }
-    /** 
+    /**
      * @returns {string}
      */
     toJSON() { return this.name; }
@@ -134,7 +273,7 @@ export class CesrProtocol {
 export class CesrCodeTable {
     #protocol;
     /**
-     * @param {CesrProtocol} protocol 
+     * @param {CesrProtocol} protocol
      */
     constructor(protocol) {
         if (!(protocol instanceof CesrProtocol)) throw new TypeError();
@@ -144,30 +283,30 @@ export class CesrCodeTable {
     get name() { return this.constructor.name; }
     /** @type {number} */
     get codeSize() { throw new UnknownCodeError(`${this.name}.codeSize`); }
-    /** 
-     * @param {string} code  
-     * @returns {CesrCodeHeader}
+    /**
+     * @param {string} code
+     * @returns {CesrDerivationCode}
      */
     mapCodeHeader(code) {
         code = code.slice(0, this.codeSize);
         throw new UnknownCodeError(`${this.name}.mapCodeHeader`, code);
     }
-    /** 
-     * @param {CesrCodeHeader} code  
+    /**
+     * @param {CesrVersionHeader} code
      * @returns {number}
      */
     getTotalLength(code) {
         throw new UnknownCodeError(`${this.name}.getTotalLength`, code.value);
     }
-    /** 
-     * @param {CesrCodeHeader} code  
+    /**
+     * @param {CesrVersionHeader} code
      * @returns {number}
      */
     getGroupCount(code) {
         throw new UnknownCodeError(`${this.name}.getGroupCount`, code.value);
     }
-    /** 
-     * @param {CesrCodeHeader} code  
+    /**
+     * @param {CesrVersionHeader} code
      * @returns {number}
      */
     getLeadBytes(code) {
@@ -180,7 +319,7 @@ export class CesrCodeTable {
     get _typeNameGetter() {
         const self = this;
         /**
-         * @this {CesrCodeHeader}
+         * @this {CesrVersionHeader}
          */
         return function () {
             return self.#protocol.getTypeName(this);
@@ -193,7 +332,7 @@ export class CesrCodeTable {
     get _countGetter() {
         const self = this;
         /**
-         * @this {CesrCodeHeader}
+         * @this {CesrVersionHeader}
          */
         return function () {
             return self.getGroupCount(this);
@@ -206,7 +345,7 @@ export class CesrCodeTable {
     get _leadBytesGetter() {
         const self = this;
         /**
-         * @this {CesrCodeHeader}
+         * @this {CesrVersionHeader}
          */
         return function () {
             return self.getLeadBytes(this);

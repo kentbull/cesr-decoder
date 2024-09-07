@@ -1,16 +1,43 @@
 import json
-import re
 from os import (path)
 
-from keri.core.coring import (MatterCodex, SmallVarRawSizeCodex, LargeVarRawSizeCodex, NonTransCodex, DigCodex, NumCodex, BextCodex, PreCodex,
-                              IndexerCodex, IndexedSigCodex, IndexedCurrentSigCodex, IndexedBothSigCodex, CounterCodex, ProtocolGenusCodex, AltCounterCodex)
+from keri.core.coring import (Matter, Indexer, Counter, CipherX25519VarQB64Codex, CipherX25519FixQB64Codex,
+                              CipherX25519VarCodex, TextCodex)
+from keri.core.coring import (MatterCodex, SmallVarRawSizeCodex, LargeVarRawSizeCodex, NonTransCodex, DigCodex,
+                              NumCodex, BextCodex, PreCodex,
+                              IndexerCodex, IndexedSigCodex, IndexedCurrentSigCodex, IndexedBothSigCodex, CounterCodex,
+                              ProtocolGenusCodex, AltCounterCodex, CipherX25519QB2VarCodex, CipherX25519AllQB64Codex)
 from keri.core.parsing import (ColdCodex)
-from keri.core.coring import (Matter, Indexer, Counter)
 
 # names.json
 
 names = set()
-for i in (MatterCodex, SmallVarRawSizeCodex, LargeVarRawSizeCodex, NumCodex, IndexerCodex, CounterCodex, AltCounterCodex, ProtocolGenusCodex, ColdCodex):
+for i in (
+        # keri.core.parsing
+        ColdCodex,
+        # keri.core.coring
+        MatterCodex,
+        SmallVarRawSizeCodex,
+        LargeVarRawSizeCodex,
+        NonTransCodex,
+        DigCodex,
+        NumCodex,
+        BextCodex,
+        TextCodex,
+        CipherX25519VarCodex,
+        CipherX25519FixQB64Codex,
+        CipherX25519VarQB64Codex,
+        CipherX25519AllQB64Codex,
+        CipherX25519QB2VarCodex,
+        PreCodex,
+        IndexerCodex,
+        IndexedSigCodex,
+        IndexedCurrentSigCodex,
+        IndexedBothSigCodex,
+        CounterCodex,
+        ProtocolGenusCodex,
+        AltCounterCodex,
+):
     for key, value in i().__dict__.items():
         names.add(key)
 
@@ -22,7 +49,32 @@ with open("names.json", "w") as fp:
 special = {}
 codes = set()
 codex = {}
-for i in (MatterCodex, SmallVarRawSizeCodex, LargeVarRawSizeCodex, NonTransCodex, DigCodex, NumCodex, BextCodex, PreCodex, IndexerCodex, IndexedSigCodex, IndexedCurrentSigCodex, IndexedBothSigCodex, CounterCodex, ProtocolGenusCodex, AltCounterCodex, ColdCodex):
+for i in (
+        # keri.core.parsing
+        ColdCodex,
+        # keri.core.coring
+        MatterCodex,
+        SmallVarRawSizeCodex,
+        LargeVarRawSizeCodex,
+        NonTransCodex,
+        DigCodex,
+        NumCodex,
+        BextCodex,
+        TextCodex,
+        CipherX25519VarCodex,
+        CipherX25519FixQB64Codex,
+        CipherX25519VarQB64Codex,
+        CipherX25519AllQB64Codex,
+        CipherX25519QB2VarCodex,
+        PreCodex,
+        IndexerCodex,
+        IndexedSigCodex,
+        IndexedCurrentSigCodex,
+        IndexedBothSigCodex,
+        CounterCodex,
+        ProtocolGenusCodex,
+        AltCounterCodex,
+):
     o = {}
     for key, value in i().__dict__.items():
         if not value in o:
@@ -56,14 +108,13 @@ if path.isfile("counter.json"):
 else:
     counter = {}
 
-for i in ("Counter","AltCounter"):
+for i in ("Counter", "AltCounter"):
     if not i in counter:
         counter[i] = {}
     for key, value in codex[i].items():
         if not key in counter[i]:
             counter[i][key] = {}
-        counter[i][key]["name"] = value    
+        counter[i][key]["name"] = value
 
 with open("counter.json", "w") as fp:
     json.dump(counter, fp, indent=2)
-
