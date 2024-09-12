@@ -1,4 +1,11 @@
-import {getCesrValue, getCesrFrame, CesrProtocol, CesrValue, Serials} from "../../common/modules/cesr.js";
+import {
+    getCesrValue,
+    getCesrFrame,
+    CesrProtocol,
+    CesrValue,
+    Serials,
+    CesrVersionHeader
+} from "../../common/modules/cesr.js";
 
 /**
  * A grouped primitive
@@ -132,6 +139,7 @@ export class CesrDecoder {
      * @param {Frame} frame
      * @param {Group} group
      * @param {CesrValue} code
+     * @param {number} offset
      * @returns {object}
      */
     mapDefault(frame, group, code, offset) { return code; }
@@ -161,6 +169,8 @@ export class CesrDecoder {
      * @param {Uint8Array} input - The CESR stream
      */
     *values(state, input) {
+        let serial = 'JSON';
+        let version = '';
         while (true) {
             const slice = this.nextSlice(state, input);
             if (slice.length == 0) break;
@@ -169,6 +179,10 @@ export class CesrDecoder {
             const protocol = group?.protocol ?? this.#protocol;
             const getValue = frame.valueGetter;
             const frameValue = getValue(protocol, slice);
+            if(frameValue.header instanceof CesrVersionHeader) {
+                serial = frameValue.header.serial;
+                version = frameValue.header.proto;
+            }
             let length = frameValue.length;
             let result = undefined;
 
@@ -181,6 +195,8 @@ export class CesrDecoder {
                         throw new Error(`Unsupported serialization type: ${frameValue.header.serial}`)
                 }
             } else if (frameValue.header.selector) {
+                frameValue.header.serial = serial; // set attachment serialization to stream header serialization
+                frameValue.header.version = version;
                 if (protocol.isFrame(frameValue.header)) {
                     length = frameValue.header.length;
                     result = this.mapCesrFrame(frame, group, frameValue, { start: state.start, length: length });

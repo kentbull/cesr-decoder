@@ -14,13 +14,18 @@ function fromJson(json) {
     return JSON.parse(json);
 }
 
-function formatHeader(code) {
+/**
+ *
+ * @param cesrValue {CesrValue}
+ * @returns {string}
+ */
+function formatHeader(cesrValue) {
     const parts = [];
-    parts.push(code.header.value);
-    parts.push(code.header.typeName ?? code.header.serial);
+    parts.push(cesrValue.header.value);
+    parts.push(cesrValue.header.typeName ?? cesrValue.header.serial);
     for (const i of ["leadBytes", "size", "count", "version", "index", "ondex"]) {
-        if (Object.hasOwn(code.header, i)) {
-            parts.push(`${i}=${code.header[i]}`);
+        if (Object.hasOwn(cesrValue.header, i)) {
+            parts.push(`${i}=${cesrValue.header[i]}`);
         }
     }
     return parts.join(" ");

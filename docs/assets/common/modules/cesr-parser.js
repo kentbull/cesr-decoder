@@ -1,6 +1,19 @@
-import {CesrVersionHeader, CesrCodeTable, CesrProtocol, Serials, UnknownCodeError} from "./cesr.js";
+import {
+  CesrVersionHeader,
+  CesrCodeTable,
+  CesrProtocol,
+  Serials,
+  UnknownCodeError,
+  ShortageError,
+  UnexpectedCountCodeError, UnexpectedCodeError, UnexpectedOpCodeError, ConversionError
+} from "./cesr.js";
 import {Hex} from "../../local/modules/hex.js";
 import {Utf8} from "../../local/modules/utf8.js";
+import {CountCodeStart, CounterHards, MatterHards, OpCodeStart} from "./cesr-tables.js";
+import {Base64} from "../../local/modules/base64.js";
+
+
+import {readInt} from "./converters.js";
 
 /**
  * An encoded CESR value along with its looked up derivation code
@@ -63,7 +76,7 @@ export function getCesrValue(protocol, input) {
 
   // read cesr code
   const value = input.slice(0, total);
-  if (total != value.length) throw new UnknownCodeError(`getCesrValue ${protocol.name}`, JSON.stringify(code));
+  if (total !== value.length) throw new UnknownCodeError(`getCesrValue ${protocol.name}`, JSON.stringify(code));
 
   return new CesrValue({
     header: code,
@@ -160,28 +173,284 @@ export function getCesrFrame(protocol, input) {
 }
 
 /**
+ *
+ * @param cesrValue {CesrValue}
+ * @param protocol {CesrProtocol}
+ * @param input {Uint8Array}
+ * @param derivationCode {CesrDerivationCode}
+ * @returns {CesrValue}
+ */
+function getSealSourceTriples(cesrValue, protocol, input, derivationCode) {
+  // TODO needs to know if parsing QB64 or QB2 since counts will be different.
+  // strip off the count code
+  const table = protocol.getCodeTable(cesrValue.header.selector);
+  const fs = table.getTotalLength(cesrValue.header);
+  const triple = input.slice(fs);
+  let tripleSize = 0;
+
+  const [counterHard, count] = fromCounterQB64b(input.slice(0,fs), protocol);
+
+  for (let i = 0; i < count; i++) {
+    const [prefix_hard, prefix_size, prefix_raw] = parsePrefixQB64(protocol, triple);
+    const seqnerStartPosition = prefix_size;
+    const [seqner_hard, seqner_size, seqner_raw] = parseSeqnerQB64(protocol, triple.slice(seqnerStartPosition));
+    const saiderStartPosition = seqnerStartPosition + seqner_size
+    const [saider_hard, saider_size, saider_raw] = parseSaider(protocol, triple.slice(saiderStartPosition));
+    tripleSize += prefix_size + seqner_size + saider_size
+  }
+
+  derivationCode.leadBytes = 0;
+  derivationCode.size = fs;
+  derivationCode.count = count
+  derivationCode.index = -1;
+  derivationCode.ondex = -1;
+  return new CesrValue({
+    header: derivationCode,
+    value: input.slice(0, fs + tripleSize)
+  });
+}
+
+/**
+ * Extracts identifier prefix from qualified Base64URLSafe string or bytes.
+ * Detects if string and converts to bytes.
+ * @param protocol {CesrProtocol}
+ * @param input {string | Uint8Array}
+ * @returns {CesrValue}
+ */
+function parsePrefixQB64(protocol, input) {
+  return fromMatterQB64b(input, protocol);
+}
+
+/**
+ * Parses a sequence number from qualified Base64URLSafe string or bytes.
+ * Detects if string and converts to bytes.
+ * @param protocol {CesrProtocol}
+ * @param input {string | Uint8Array}
+ * @returns {CesrValue}
+ */
+function parseSeqnerQB64(protocol, input) {
+  return fromMatterQB64b(input, protocol);
+}
+
+/**
+ * Parses a self addressing identifier (SAID) from qualified Base64URLSafe string or bytes.
+ * Detects if string and converts to bytes.
+ * @param protocol {CesrProtocol}
+ * @param input {string | Uint8Array}
+ * @returns {CesrValue}
+ */
+function parseSaider(protocol, input) {
+  return fromMatterQB64b(input, protocol);
+}
+
+/**
+ * Extracts non-count code, non-indexed primitive including the derivation code and raw byte value from a qualified
+ * Base64URLSafe cryptographic primitive that is string or bytes.
+ *
+ * Similar to Matter._exfil in KERIpy.
+ * @param qb64b {string | Uint8Array}
+ * @param protocol {CesrProtocol}
+ * @returns {[string, number, Uint8Array]}
+ */
+function fromMatterQB64b(qb64b, protocol) {
+  if(!(qb64b instanceof Uint8Array)) {
+    if(typeof qb64b === "string") {
+      qb64b = Utf8.encode(qb64b);
+    } else {
+      throw new TypeError("fromMatterQB64b: Expected Uint8Array or string, got " + typeof qb64b);
+    }
+  }
+  if (!qb64b || !qb64b.length || qb64b.length === 0) throw new ShortageError("fromMatterQB64b: Empty material");
+  let first = qb64b.slice(0,1); // get first character code selector
+  first = Utf8.decode(first);
+  if (!(first in MatterHards)) {
+    if(first[0] === CountCodeStart) throw new UnexpectedCountCodeError("Unexpected count code start while extracting Matter.");
+    else if(first[0] === OpCodeStart) throw new UnexpectedOpCodeError("Unexpected op code start while extracting Matter.");
+    else throw new UnexpectedCodeError(`Unknown code '${first[0]}' start while extracting Matter.`);
+  }
+  let hardSize = MatterHards[first];
+  if(qb64b.length < hardSize) throw new ShortageError(`fromMatterQB64b: Need ${hardSize - qb64b.length} more characters.`);
+
+  const hardBytes = qb64b.slice(0, hardSize);
+  const hard = Utf8.decode(hardBytes);
+  const table = protocol.getCodeTable(hard);
+  let {hs, ss, fs, ls} = table.spec.sizes;
+
+  let cs = hs + ss; // code size is hard size + soft size
+  let size = 0;
+  if (fs === null || fs === undefined) {
+    if (cs % 4 !== 0) throw new Error("fromMatterQB64b: Code size not divisible by 4");
+    const sizeBytes = qb64b.slice(hs, cs); // extract size chars
+    const sizeChars = Utf8.decode(sizeBytes);
+    size = Base64.toInt(sizeChars); // compute int size
+    fs = (size * 4) + cs;
+  }
+
+  // assumes unit tests on Matter and MatterCodex ensure codes and sizes are well-formed, as in
+  // hs is consistent, ss === 0 and not fs % 4 and hs > 0 and fs >= hs + ss unless fs is None
+
+  if(qb64b.length < fs) throw new ShortageError(`fromMatterQB64b: Need ${fs - qb64b.length} more characters.`);
+
+  qb64b = qb64b.slice(0, fs);
+
+  let raw = new Uint8Array(0); // raw bytes of cryptographic primitive
+
+  // check for non-zeroed pad bits or lead bytes
+  const ps = cs % 4; // code pad size ps = cs mod 4
+  const pbs = 2 * (ps ? ps : ls); // Pad bit size in bits
+  if(ps > 0) {
+    const padding = new Uint8Array(ps).fill(65); // pad with 'A' characters
+    const base = new Uint8Array([...padding, ...qb64b.slice(cs)])
+    // paw = padded raw bytes
+    const paw = Base64.decodeBase64Url(base); // Decode base to leave pre-padded raw, then make bytes again
+    // pi = pad integer
+    const pi = readInt(paw.slice(0, ps)); // read the integer value of the pad bits
+    if(pi & (2 ** pbs - 1)) throw new Error(`fromMatterQB64b: Non-zeroed pad bits = ${(pi & (2 ** pbs - 1)).toString(16)} in ${qb64b.slice(cs, cs+1)}`);
+    raw = paw.slice(ps); //strip off ps pre-pad paw bytes
+  } else { // Not ps. If not ps then may or may not be ls (lead bytes)
+    const base = qb64b.slice(cs); // strip off code leaving lead chars, if any, and value
+    // decode lead chars + value leaving lead bytes + raw bytes
+    // then strip off ls lead bytes leaving raw
+    const paw = Base64.decodeBase64Url(base);
+    const li =  readInt(paw.slice(0, ls)); // read the integer value of the lead bytes
+    if(li > 0) {
+      if (ls === 1) throw new Error(`fromMatterQB64b: Non-zeroed lead byte = ${li.toString(16)} in ${qb64b.slice(cs, cs+1)}`);
+      else throw new Error(`fromMatterQB64b: Non-zeroed lead bytes = ${li.toString(16)} in ${qb64b.slice(cs, cs+ls)}`);
+    }
+    raw = paw.slice(ls); // strip off ls lead bytes
+  }
+  if (raw.length !== Math.floor((qb64b.length - cs) * 3 / 4) - ls) {
+    throw new ConversionError(`Improperly qualified material: ${Utf8.encode(qb64b)}`);
+  }
+  return [hard, fs, raw]
+}
+
+/**
+ * Create a fully qualified Base64 representation of the raw bytes encoded as bytes.
+ * This implementation only uses the hard part of the code as SAIDs do not have a variable part (soft size).
+ *
+ * Analogous to Matter._infil() function from KERIpy. Most comments here are taken from that function.
+ *
+ * @param raw {Uint8Array} - the raw bytes to encode
+ * @param code {string} the derivation code selector to use to look up sizes
+ * @param protocol {CesrProtocol} the CESR protocol specifying the code table
+ * @returns {Uint8Array} - UTF8 encoded bytes of the fully qualified Base64 representation of the raw bytes
+ */
+export function toMatterQB64b(raw, code, protocol){
+  const table = protocol.getCodeTable(code);
+  let {hs, ss, fs, ls} = table.spec.sizes;
+  const cs = hs + ss
+  const rs = raw.length
+  const ps = (3 - ((rs + ls) % 3)) % 3 // net pad size given raw size and lead size
+  // net pad size must equal both code size remainder so that primitive both + converted padded raw is fs long.
+  // Assumes ls in (0, 1, 2) and cs % 4 != 3, fs % 4 == 0. Sizes table must ensure these properties.
+  // Even still, following check is a good idea.
+  if (cs % 4 !== ps - ls) {
+    throw new Error(`Invalid code size and raw pad size ${ps} given raw length ${rs}`)
+  }
+
+  // Prepad raw so we midpad the full primitive. Prepadding with ps+ls zero bytes ensures encodeB64 of
+  // prepad+lead+raw has no trailing pad characters. Finally skip first ps == cs % 4 of the converted characters
+  // to ensure that when full code is prepended the full primitive size is fs but midpad bits are zeros.
+  const prepad = new Uint8Array(ps + ls)
+  const paddedRaw = new Uint8Array(prepad.length + raw.length)
+
+  // fill out prepad
+  // when fixed and ls != 0 then cs % 4 is zero and ps === ls
+  // otherwise fixed and ls === 0 then cs % 4 === ps
+  for (let i = 0; i < ps; i++) {
+    prepad[i] = 0
+  }
+  paddedRaw.set(prepad)
+  // adjust the bytes considering padding
+  paddedRaw.set(raw, prepad.length)
+  const b64Padded = Base64.encodeBase64Url(paddedRaw)
+  const unpaddedB64 = b64Padded.substring(cs % 4)
+
+  return Utf8.encode(code + unpaddedB64)
+}
+
+/**
+ * Extracts count code primitive including the derivation code and raw byte value from a qualified
+ * Base64URLSafe cryptographic primitive that is string or bytes.
+ *
+ * Similar to Counter._exfil in KERIpy.
+ * @param qb64b {string | Uint8Array}
+ * @param protocol {CesrProtocol}
+ * @returns {[string, number, Uint8Array]}
+ */
+function fromCounterQB64b(qb64b, protocol) {
+  if(!(qb64b instanceof Uint8Array)) {
+    if(typeof qb64b === "string") {
+      qb64b = Utf8.encode(qb64b);
+    } else {
+      throw new TypeError("fromCounterQB64b: Expected Uint8Array or string, got " + typeof qb64b);
+    }
+  }
+  if (!qb64b || !qb64b.length || qb64b.length === 0) throw new ShortageError("fromMatterQB64b: Empty material");
+  let first = qb64b.slice(0,2); // count codes are two characters since they include '-'
+  first = Utf8.decode(first);
+  if (!(first in CounterHards)) {
+    if(first[0] === OpCodeStart) throw new UnexpectedOpCodeError("Unexpected op code start while extracting Counter.");
+    else throw new UnexpectedCodeError(`Unknown code '${first[0]}' start while extracting Counter.`);
+  }
+  let hardSize = CounterHards[first];
+  if(qb64b.length < hardSize) throw new ShortageError(`fromCounterQB64b: Need ${hardSize - qb64b.length} more characters.`);
+
+  const hardBytes = qb64b.slice(0, hardSize);
+  const hard = Utf8.decode(hardBytes);
+  const table = protocol.getCodeTable(hard);
+  let {hs, ss, fs, ls} = table.spec.sizes;
+
+  if(qb64b.length < fs) throw new ShortageError(`fromCounterQB64b: Need ${fs - qb64b.length} more characters.`);
+
+  let countCodeB64 = qb64b.slice(hs, fs);
+  let countInt = Base64.toInt(Utf8.decode(countCodeB64));
+  return [hard, countInt]
+}
+
+function toCounterQB64b(raw, code, protocol) {
+
+}
+
+/**
+ * Parse the correct count of quadlets (set of 4 Base64 characters) from tine input byte array.
+ * @param input {Uint8Array} CESR stream byte array
+ * @param derivationCode {CesrDerivationCode]
+ * @param quadletCount {number}
+ * @param codeLength {number}
+ * @returns {CesrValue}
+ */
+function getAttachedMaterialQuadlets(input, derivationCode, quadletCount, codeLength) {
+  const size = quadletCount * 4 + codeLength;
+  if (size > input.length) throw new UnknownCodeError(`getAttachedMaterialQuadlets not enough data for`, JSON.stringify(derivationCode));
+
+  return new CesrValue({
+    header: derivationCode,
+    value: input.slice(0, size)
+  });
+}
+
+/**
  * @param {CesrProtocol} protocol
  * @param {Uint8Array} input
  * @return {CesrValue}
  */
 function getTextFrame(protocol, input) {
-  const value = getCesrValue(protocol, input);
-  switch (value.header.selector) {
-    case "-V":
-      break;
-    case "-0V":
-      break;
+  // assumes the count code is left at the front of the input so it can be returned in the CesrValue
+  const cesrValue = getCesrValue(protocol, input);
+  switch (cesrValue.header.selector) {
+    case "-I": // Seal source triples
+      // extract count code from stream
+      return getSealSourceTriples(cesrValue, protocol, input, cesrValue.header);
+    case "-V": // Attached material quadlets
+      // TODO check whether input has selector stripped prior to processing
+      return getAttachedMaterialQuadlets(input, cesrValue.header, cesrValue.header.count, cesrValue.header.length);
+    case "-0V": // Big attached material quadlets
+      return getAttachedMaterialQuadlets(input, cesrValue.header, cesrValue.header.count, cesrValue.header.length);
     default:
-      throw new UnknownCodeError(`getTextFrame`, JSON.stringify(value.header));
+      throw new UnknownCodeError(`getTextFrame`, JSON.stringify(cesrValue.header));
   }
-
-  const size = value.header.count * 4 + value.header.length;
-  if (size > input.length) throw new UnknownCodeError(`getTextFrame`, JSON.stringify(value.header));
-
-  return new CesrValue({
-    header: value.header,
-    value: input.slice(0, size)
-  });
 }
 
 /**

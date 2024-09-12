@@ -8,6 +8,12 @@ https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 
 */
 
+export class ConversionError extends Error {
+    constructor(message) {
+        super(message);
+    }
+}
+
 export class UnknownCodeError extends Error {
     /** @type {string} */
     code;
@@ -18,6 +24,45 @@ export class UnknownCodeError extends Error {
     constructor(message, code) {
         super(`${message} code=${code}`);
         this.code = code;
+    }
+}
+
+export class UnexpectedCountCodeError extends Error {
+    /** @type {string} */
+    code;
+    constructor(message, code) {
+        super(`${message} code=${code}`);
+        this.code = code;
+    }
+}
+
+export class UnexpectedOpCodeError extends Error {
+    /** @type {string} */
+    code;
+    constructor(message, code) {
+        super(`${message} code=${code}`);
+        this.code = code;
+    }
+}
+
+export class UnexpectedCodeError extends Error {
+    /** @type {string} */
+    code;
+    constructor(message, code) {
+        super(`${message} code=${code}`);
+        this.code = code;
+    }
+}
+
+export class ShortageError extends Error {
+    /** @type {number} */
+    length;
+    /** @type {number} */
+    expected;
+    constructor(message, length, expected) {
+        super(`${message} length=${length} expected=${expected}`);
+        this.length = length;
+        this.expected = expected;
     }
 }
 

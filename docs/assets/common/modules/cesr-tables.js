@@ -226,3 +226,58 @@ export class CesrContext {
         return null;
     }
 }
+
+/**
+ * TODO read Hards from JSON rather than make it here.
+ * Hards table maps from bytes Base64 first code char to int of hard size, hs,
+ * (stable) of code. The soft size, ss, (unstable) is always 0 for Matter
+ * unless fs is None which allows for variable size multiple of 4, i.e.
+ * not (hs + ss) % 4.
+ */
+function createMatterHards() {
+    const hards = {};
+    for (let c = 65; c < 65 + 26; c++) {
+        hards[String.fromCharCode(c)] = 1;
+    }
+    for (let c = 97; c < 97 + 26; c++) {
+        hards[String.fromCharCode(c)] = 1;
+    }
+    Object.assign(hards, {
+        "0": 2,
+        "1": 4,
+        "2": 4,
+        "3": 4,
+        "4": 2,
+        "5": 2,
+        "6": 2,
+        "7": 4,
+        "8": 4,
+        "9": 4,
+    });
+    return hards;
+}
+
+export const MatterHards = createMatterHards();
+export const CountCodeStart = '-';
+export const OpCodeStart = '_';
+
+/**
+ * Hards table maps from bytes Base64 first two code chars to int of
+ * hard size, hs,(stable) of code. The soft size, ss, (unstable) for Counter
+ * is always > 0 and hs + ss = fs always
+ */
+function createCounterHards() {
+    const hards = {};
+    for (let c = 65; c < 65 + 26; c++) {
+        hards['-' + String.fromCharCode(c)] = 2;
+    }
+    for (let c = 97; c < 97 + 26; c++) {
+        hards['-' + String.fromCharCode(c)] = 2;
+    }
+    Object.assign(hards, {
+        "-0": 3,
+        "--": 5,
+    });
+    return hards;
+}
+export const CounterHards = createCounterHards();

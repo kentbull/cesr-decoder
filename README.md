@@ -18,6 +18,32 @@ The CESR tables used by this app are automatically generated from [keripy](https
 3. Check Interleaved if CESR text is stream content (stream has JSON and CESR interleaved)
 4. Click Decode
 
+## Development workflow - WebStorm/IntelliJ
+
+1. Clone the repository
+    ```shell
+   git clone git@github.com:kentbull/cesr-decoder.git
+   cd cesr-decoder
+   ```
+2. Install the `http-server` package globally
+   ```shell
+   npm install -g http-server
+   ```
+3. Start the `http-server` with the `./docs` directory as the content root. This should start an http server on `http://localhost:8080`.
+   ```shell
+   http-server ./docs
+   ```
+4. Create a JavaScript Debug configuration in WebStorm/IntelliJ
+    1. Open the Run/Debug Configurations dialog
+    2. Click the `+` button and select JavaScript Debug
+    3. Name the configuration `Chrome index.html`
+    4. Set the URL to `http://localhost:8080`
+    5. Click OK
+5. Set breakpoints as desired in the code in `./docs/assets/common/modules`.
+6. Start the debug configuration. This should automatically open a Chrome browser window to `http://localhost:8080` with the debugger attached.
+7. Debug as normal.
+
+
 ## Sample CESR content
 
 Top of the page has a number of links to previously recorded CESR streams. Click on the links to see the CESR stream decoded.
