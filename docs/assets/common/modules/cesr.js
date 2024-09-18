@@ -259,7 +259,7 @@ export class CesrProtocol {
      * @param {string} selector
      * @returns {number}
      */
-    getSelectorSize(selector) {
+    getSelectorSize(_selector) {
         return 1;
     }
     /**
@@ -270,38 +270,38 @@ export class CesrProtocol {
         throw new UnknownCodeError(`${this.name}.getCodeTable`, selector);
     }
     /**
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {string}
      */
-    getTypeName(code) {
+    getTypeName(_code) {
         return undefined;
     }
     /**
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {boolean}
      */
-    isFrame(code) {
+    isFrame(_code) {
         return false;
     }
     /**
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {boolean}
      */
-    isGroup(code) {
+    isGroup(_code) {
         return false;
     }
     /**
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {boolean}
      */
-    hasContext(code) {
+    hasContext(_code) {
         return false;
     }
     /**
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {CesrProtocol}
      */
-    getContext(code) {
+    getContext(_code) {
         return undefined;
     }
     /**

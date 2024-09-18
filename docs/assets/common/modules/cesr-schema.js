@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import {CesrProtocol, CesrCodeTable, UnknownCodeError, CesrVersionHeader, CesrDerivationCode} from "./cesr.js";
 import { Base64 } from "../../local/modules/base64.js";
 
@@ -27,10 +28,10 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {string} selector
+     * @param {string} _selector
      * @returns {number}
      */
-    getSelectorSize(selector) {
+    getSelectorSize(_selector) {
         return 8; // hardcoded to 8 because count codes are always 8 bytes long or shorter.
     }
     /**
@@ -46,10 +47,10 @@ export class CesrSchemaProtocol extends CesrProtocol {
     }
     /**
      * @override
-     * @param {CesrVersionHeader} code
+     * @param {CesrVersionHeader} _code
      * @returns {string}
      */
-    getTypeName(code) {
+    getTypeName(_code) {
         throw new TypeError(`${this.name}.getTypeName()`);
     }
     /**

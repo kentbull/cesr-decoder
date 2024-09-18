@@ -1,7 +1,9 @@
 import {
     getCesrValue,
     getCesrFrame,
+    // eslint-disable-next-line no-unused-vars
     CesrProtocol,
+    // eslint-disable-next-line no-unused-vars
     CesrValue,
     Serials,
     CesrVersionHeader
@@ -142,7 +144,7 @@ export class CesrDecoder {
      * @param {number} offset
      * @returns {object}
      */
-    mapDefault(frame, group, code, offset) { return code; }
+    mapDefault(frame, group, code, _offset) { return code; }
     mapJsonFrame(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
     mapCesrFrame(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
     mapCesrGroup(frame, group, code, offset) { return this.mapDefault(frame, group, code, offset); }
