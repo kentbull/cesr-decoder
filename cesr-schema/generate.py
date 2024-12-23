@@ -1,13 +1,39 @@
 import json
 from os import (path)
 
-from keri.core.coring import (Matter, Indexer, Counter, CipherX25519VarQB64Codex, CipherX25519FixQB64Codex,
-                              CipherX25519VarCodex, TextCodex)
-from keri.core.coring import (MatterCodex, SmallVarRawSizeCodex, LargeVarRawSizeCodex, NonTransCodex, DigCodex,
-                              NumCodex, BextCodex, PreCodex,
-                              IndexerCodex, IndexedSigCodex, IndexedCurrentSigCodex, IndexedBothSigCodex, CounterCodex,
-                              ProtocolGenusCodex, AltCounterCodex, CipherX25519QB2VarCodex, CipherX25519AllQB64Codex)
-from keri.core.parsing import (ColdCodex)
+from keri.core.coring import (
+    Matter,
+    TextCodex
+)
+from keri.core.counting import (
+    Counter, CounterCodex_1_0, CounterCodex_2_0, SealCodex_2_0, GenusCodex,
+)
+from keri.core.indexing import (
+    Indexer,
+    IndexerCodex,
+    IndexedSigCodex,
+    IndexedCurrentSigCodex,
+    IndexedBothSigCodex,
+)
+from keri.core.coring import (
+    MatterCodex,
+    SmallVarRawSizeCodex,
+    LargeVarRawSizeCodex,
+    NonTransCodex,
+    DigCodex,
+    NumCodex, BextCodex, PreCodex,
+)
+from keri.core.signing import (
+    CipherX25519FixQB64Codex,
+    CipherX25519VarQB64Codex,
+    CipherX25519VarStrmCodex,
+    CipherX25519AllQB64Codex,
+    CipherX25519QB2VarCodex,
+    CipherX25519AllVarCodex, CipherX25519AllCodex,
+)
+from keri.kering import ColdCodex
+
+# from keri.core.parsing import (ColdCodex)
 
 # names.json
 
@@ -24,19 +50,22 @@ for i in (
         NumCodex,
         BextCodex,
         TextCodex,
-        CipherX25519VarCodex,
+        CipherX25519VarStrmCodex,
         CipherX25519FixQB64Codex,
         CipherX25519VarQB64Codex,
         CipherX25519AllQB64Codex,
         CipherX25519QB2VarCodex,
+        CipherX25519AllVarCodex,
+        CipherX25519AllCodex,
         PreCodex,
         IndexerCodex,
         IndexedSigCodex,
         IndexedCurrentSigCodex,
         IndexedBothSigCodex,
-        CounterCodex,
-        ProtocolGenusCodex,
-        AltCounterCodex,
+        CounterCodex_1_0,
+        CounterCodex_2_0,
+        SealCodex_2_0,
+        GenusCodex
 ):
     for key, value in i().__dict__.items():
         names.add(key)
@@ -61,19 +90,22 @@ for i in (
         NumCodex,
         BextCodex,
         TextCodex,
-        CipherX25519VarCodex,
+        CipherX25519VarStrmCodex,
         CipherX25519FixQB64Codex,
         CipherX25519VarQB64Codex,
         CipherX25519AllQB64Codex,
         CipherX25519QB2VarCodex,
+        CipherX25519AllVarCodex,
+        CipherX25519AllCodex,
         PreCodex,
         IndexerCodex,
         IndexedSigCodex,
         IndexedCurrentSigCodex,
         IndexedBothSigCodex,
-        CounterCodex,
-        ProtocolGenusCodex,
-        AltCounterCodex,
+        CounterCodex_1_0,
+        CounterCodex_2_0,
+        SealCodex_2_0,
+        GenusCodex
 ):
     o = {}
     for key, value in i().__dict__.items():
@@ -88,17 +120,30 @@ with open("codex.json", "w") as fp:
     json.dump(codex, fp, indent=2)
 
 # sizes.json
-
+# TODO pull sizes for Indexer in an Indexer specific way to get os instead of xs
+# TODO pull sizes for Counter in a Counter specific way to get the decoupled sizes from the major and minor KERI versions object
 sizes = {}
 for i in (Matter, Indexer, Counter):
     o = {}
     for key, value in i.Sizes.items():
         assert key in codes, f"key = {i.__name__}.{key}"
+        # TODO change pull of Counter codes to reflect new Cizage structure for KERI 1.0 and 2.0
         o[key] = value._asdict()
     sizes[i.__name__] = o
 
 with open("sizes.json", "w") as fp:
     json.dump(sizes, fp, indent=2)
+
+# hards.json
+hards = {}
+for i in (Matter, Indexer, Counter):
+    o = {}
+    for key, value in i.Hards.items():
+        assert key in codes, f"key = {i.__name__}.{key}"
+        o[key] = value._asdict()
+    hards[i.__name__] = o
+with open("hards.json", "w") as fp:
+    json.dump(hards, fp, indent=2)
 
 # counter.json
 
